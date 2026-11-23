@@ -10,8 +10,8 @@ import { forEachEntity, safely } from "../util";
  */
 const ID = "kim:flappy_ghast";
 const BASE_SPEED = 0.03; // must match movement / flying_speed in the entity JSON
-const MAX_BOOST = 7;
-const BOOST_GAIN = 0.05; // per tick-step (every 2 ticks)
+const MAX_BOOST = 25;
+const BOOST_GAIN = 0.08; // per tick-step (every 2 ticks); ~10 s from 1x to max
 const MAX_TURN_DEG = 5; // yaw change per step that still counts as "straight"
 const FIRE_COOLDOWN = 20; // 1 shot per second
 const TNT_POWER = 4; // same as TNT
@@ -41,7 +41,7 @@ export function registerFlappyGhast(): void {
     forEachEntity(ID, (ghast) =>
       safely(() => {
         const rider = controllingPlayer(ghast.id);
-        const state = boost.get(ghast.id) ?? { level: 1, yaw: 0, tier: 1 };
+        const state = boost.get(ghast.id) ?? { level: 1, yaw: 0, tier: 0 };
         if (!rider) {
           if (state.level !== 1) setSpeed(ghast.id, 1);
           boost.delete(ghast.id);
@@ -58,9 +58,9 @@ export function registerFlappyGhast(): void {
         state.yaw = yaw;
         setSpeed(ghast.id, state.level);
 
-        const tier = Math.floor(state.level);
+        const tier = Math.floor(state.level / 5); // ding every 5x
         if (tier > state.tier) {
-          ghast.dimension.playSound("random.orb", ghast.location, { pitch: 0.5 + tier * 0.2, volume: 1 });
+          ghast.dimension.playSound("random.orb", ghast.location, { pitch: 0.6 + (tier / (MAX_BOOST / 5)) * 1.4, volume: 1 });
         }
         state.tier = tier;
         boost.set(ghast.id, state);
