@@ -1,11 +1,13 @@
-import { Dimension, Entity, Vector3, system, world } from "@minecraft/server";
+import { Dimension, Entity, Player, Vector3, system, world } from "@minecraft/server";
 import { closestPlayer, forEachEntity, safely } from "../util";
 
 /**
- * Enderpig (custom, kim:enderpig): a friendly long-legged black pig that acts like an enderman.
- * Random teleports, arrow dodging and water hatred live in the entity JSON. Here:
+ * Enderpig (custom, kim:enderpig): a long-legged black pig that fights monsters like an enderman
+ * (teleporting in for the kill) but is always friendly to players.
+ * Random teleports, teleporting toward its target, arrow dodging, water hatred and the
+ * monster hunting AI live in the entity JSON. Here:
  *  - stare at it and it happily teleports right next to you (hearts + oink)
- *  - when hurt it blinks away to a nearby safe spot
+ *  - hit by a player: blinks away. Hit by a mob: teleports next to it and fights back
  *  - it constantly leaks portal particles
  */
 const ID = "kim:enderpig";
@@ -69,14 +71,42 @@ export function registerEnderpig(): void {
   );
 
   world.afterEvents.entityHurt.subscribe(
-    ({ hurtEntity: pig }) =>
+    ({ hurtEntity: pig, damageSource }) =>
       safely(() => {
-        if (!pig.isValid || Math.random() > 0.6) return;
-        const spot = safeSpotNear(pig.dimension, pig.location, 12);
-        if (spot) blink(pig, spot);
+        if (!pig.isValid) return;
+        const attacker = damageSource.damagingEntity;
+        if (attacker instanceof Player || !attacker) {
+          // friendly: never fights players, just blinks away
+          if (Math.random() > 0.6) return;
+          const spot = safeSpotNear(pig.dimension, pig.location, 12);
+          if (spot) blink(pig, spot);
+        } else if (attacker.isValid && Math.random() < 0.5) {
+          // enderman-style: hit by a mob -> teleport right next to it
+          const spot = safeSpotNear(pig.dimension, attacker.location, 1.5);
+          if (spot) blink(pig, spot, attacker.location);
+        }
       }),
     { entityTypes: [ID] }
   );
+
+  system.runInterval(() => {
+    forEachEntity(ID, (pig) =>
+      safely(() => {
+        const target = pig.target;
+        if (!target?.isValid || target instanceof Player) return;
+        const now = system.currentTick;
+        if (now - (lastHop.get(pig.id) ?? -60) < 60) return;
+        const dx = target.location.x - pig.location.x;
+        const dz = target.location.z - pig.location.z;
+        if (Math.hypot(dx, dz) < 5) return;
+        const spot = safeSpotNear(pig.dimension, target.location, 1.5);
+        if (!spot) return;
+        blink(pig, spot, target.location);
+        lastHop.set(pig.id, now);
+      })
+    );
+    if (lastHop.size > 200) lastHop.clear();
+  }, 20);
 
   system.runInterval(() => {
     forEachEntity(ID, (pig) =>

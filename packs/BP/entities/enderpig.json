@@ -72,8 +72,8 @@
           16,
           24
         ],
-        "target_distance": 16,
-        "target_teleport_chance": 0.05,
+        "target_distance": 8,
+        "target_teleport_chance": 0.3,
         "light_teleport_chance": 0.0,
         "teleports_on_projectile_hit": true
       },
@@ -90,10 +90,6 @@
       },
       "minecraft:behavior.float": {
         "priority": 0
-      },
-      "minecraft:behavior.panic": {
-        "priority": 1,
-        "speed_multiplier": 1.4
       },
       "minecraft:behavior.tempt": {
         "priority": 3,
@@ -123,6 +119,10 @@
       "minecraft:behavior.follow_parent": {
         "priority": 5,
         "speed_multiplier": 1.1
+      },
+      "minecraft:follow_range": {
+        "value": 24,
+        "max": 24
       }
     },
     "events": {
@@ -186,6 +186,55 @@
               "target": "baby"
             }
           }
+        },
+        "minecraft:attack": {
+          "damage": 7
+        },
+        "minecraft:behavior.melee_box_attack": {
+          "priority": 2,
+          "speed_multiplier": 1.4,
+          "track_target": true,
+          "require_complete_path": false
+        },
+        "minecraft:behavior.hurt_by_target": {
+          "priority": 1,
+          "entity_types": [
+            {
+              "filters": {
+                "test": "is_family",
+                "subject": "other",
+                "operator": "!=",
+                "value": "player"
+              },
+              "max_dist": 24
+            }
+          ]
+        },
+        "minecraft:behavior.nearest_attackable_target": {
+          "priority": 2,
+          "must_see": false,
+          "reselect_targets": true,
+          "within_radius": 16,
+          "entity_types": [
+            {
+              "filters": {
+                "all_of": [
+                  {
+                    "test": "is_family",
+                    "subject": "other",
+                    "value": "monster"
+                  },
+                  {
+                    "test": "is_family",
+                    "subject": "other",
+                    "operator": "!=",
+                    "value": "player"
+                  }
+                ]
+              },
+              "max_dist": 16
+            }
+          ]
         }
       },
       "kim:baby": {
@@ -207,6 +256,10 @@
             "event": "kim:grow_up",
             "target": "self"
           }
+        },
+        "minecraft:behavior.panic": {
+          "priority": 1,
+          "speed_multiplier": 1.4
         }
       }
     }
