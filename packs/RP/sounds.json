@@ -1,0 +1,15 @@
+{
+  "entity_sounds": {
+    "entities": {
+      "kim:gazer": {
+        "volume": 1.0,
+        "pitch": [0.5, 0.7],
+        "events": {
+          "ambient": "mob.guardian.land_idle",
+          "hurt": "mob.guardian.land_hit",
+          "death": "mob.guardian.land_death"
+        }
+      }
+    }
+  }
+}

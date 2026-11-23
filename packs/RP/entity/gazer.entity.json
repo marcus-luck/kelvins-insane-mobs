@@ -1,0 +1,18 @@
+{
+  "format_version": "1.10.0",
+  "minecraft:client_entity": {
+    "description": {
+      "identifier": "kim:gazer",
+      "materials": { "default": "entity_alphatest" },
+      "textures": { "default": "textures/entity/gazer" },
+      "geometry": { "default": "geometry.kim.gazer" },
+      "animations": {
+        "float": "animation.kim.gazer.float",
+        "look_at_target": "animation.common.look_at_target"
+      },
+      "scripts": { "animate": ["float", "look_at_target"] },
+      "render_controllers": ["controller.render.default"],
+      "spawn_egg": { "base_color": "#6b1d2a", "overlay_color": "#f3e9cf" }
+    }
+  }
+}

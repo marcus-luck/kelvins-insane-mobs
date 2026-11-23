@@ -1,0 +1,16 @@
+{
+  "format_version": 2,
+  "header": {
+    "name": "Kelvin's Insane Mobs (Resources)",
+    "description": "Models and textures for Kelvin's Insane Mobs.",
+    "uuid": "8c0c8163-9491-49a6-b785-e3044270abd0",
+    "version": [0, 1, 0],
+    "min_engine_version": [1, 26, 0]
+  },
+  "modules": [
+    { "type": "resources", "uuid": "5531abfd-2213-4303-8c59-2a1e5426ea63", "version": [0, 1, 0] }
+  ],
+  "dependencies": [
+    { "uuid": "f85528b3-ff12-4119-b78a-323bb6843fd4", "version": [0, 1, 0] }
+  ]
+}

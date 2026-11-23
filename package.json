@@ -1,0 +1,17 @@
+{
+  "name": "kelvins-insane-mobs",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node tools/build.mjs",
+    "art": "python -I art/generate.py",
+    "deploy": "node tools/build.mjs && node tools/deploy.mjs",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@minecraft/server": "^2.10.0",
+    "esbuild": "^0.28.2",
+    "typescript": "^7.0.2"
+  }
+}

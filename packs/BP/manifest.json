@@ -1,0 +1,24 @@
+{
+  "format_version": 2,
+  "header": {
+    "name": "Kelvin's Insane Mobs",
+    "description": "Vanilla mobs gone insane, plus a few new horrors.",
+    "uuid": "f85528b3-ff12-4119-b78a-323bb6843fd4",
+    "version": [0, 1, 0],
+    "min_engine_version": [1, 26, 0]
+  },
+  "modules": [
+    { "type": "data", "uuid": "77c86855-9007-4a1c-8941-6055e044c513", "version": [0, 1, 0] },
+    {
+      "type": "script",
+      "language": "javascript",
+      "uuid": "e3c1f7a2-6b4d-4e8a-9c2f-1d5b7a9e3c40",
+      "entry": "scripts/main.js",
+      "version": [0, 1, 0]
+    }
+  ],
+  "dependencies": [
+    { "uuid": "8c0c8163-9491-49a6-b785-e3044270abd0", "version": [0, 1, 0] },
+    { "module_name": "@minecraft/server", "version": "2.10.0" }
+  ]
+}
