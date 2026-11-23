@@ -1,10 +1,10 @@
-import { EntityComponentTypes, GameMode, Player, system, world } from "@minecraft/server";
+import { Dimension, Entity, EntityComponentTypes, Player, Vector3, system, world } from "@minecraft/server";
 import { forEachEntity, safely } from "../util";
 
 /**
  * Flappy Ghast (custom mount, kim:flappy_ghast):
- *  - Right-click holding a Fire Charge while riding: shoots a ghast fireball where you look
- *    (uses up the charge in survival, free in creative).
+ *  - Right-click (holding any item) while riding: shoots a fireball where you look that
+ *    explodes like TNT and sets fire. The API can't detect empty-hand right-clicks.
  *  - Sprint-boost: hold forward and fly straight and it keeps accelerating, up to MAX_BOOST x.
  *    Turning bleeds the boost off; letting go of forward resets it.
  */
@@ -13,10 +13,12 @@ const BASE_SPEED = 0.03; // must match movement / flying_speed in the entity JSO
 const MAX_BOOST = 7;
 const BOOST_GAIN = 0.05; // per tick-step (every 2 ticks)
 const MAX_TURN_DEG = 5; // yaw change per step that still counts as "straight"
-const FIRE_COOLDOWN = 10;
+const FIRE_COOLDOWN = 20; // 1 shot per second
+const TNT_POWER = 4; // same as TNT
 
 const boost = new Map<string, { level: number; yaw: number; tier: number }>();
 const lastShot = new Map<string, number>();
+const shots = new Map<string, { owner: Player; dim: Dimension; last: Vector3; born: number }>();
 
 function controllingPlayer(ghastId: string) {
   const ghast = world.getEntity(ghastId);
@@ -88,10 +90,9 @@ export function registerFlappyGhast(): void {
     );
   }, 2);
 
-  // ---- fireballs
-  world.afterEvents.itemUse.subscribe(({ source: player, itemStack }) =>
+  // ---- TNT fireballs: right-click with any item while riding
+  world.afterEvents.itemUse.subscribe(({ source: player }) =>
     safely(() => {
-      if (itemStack.typeId !== "minecraft:fire_charge") return;
       const mount = player.getComponent(EntityComponentTypes.Riding)?.entityRidingOn;
       if (mount?.typeId !== ID) return;
       const now = system.currentTick;
@@ -100,26 +101,54 @@ export function registerFlappyGhast(): void {
 
       const dir = player.getViewDirection();
       const head = player.getHeadLocation();
-      const spawnAt = { x: head.x + dir.x * 3.5, y: head.y + dir.y * 3.5, z: head.z + dir.z * 3.5 };
+      // start further out when aiming down so the shot clears the ghast's own body
+      const dist = 3.5 + Math.max(0, -dir.y) * 3;
+      const spawnAt = { x: head.x + dir.x * dist, y: head.y + dir.y * dist, z: head.z + dir.z * dist };
       const fireball = player.dimension.spawnEntity("minecraft:fireball", spawnAt);
+      shots.set(fireball.id, { owner: player, dim: player.dimension, last: spawnAt, born: now });
       const proj = fireball.getComponent(EntityComponentTypes.Projectile);
       if (proj) {
         proj.owner = player;
         proj.shoot({ x: dir.x * 1.8, y: dir.y * 1.8, z: dir.z * 1.8 });
       }
       player.dimension.playSound("mob.ghast.fireball", head, { pitch: 1.3 });
-
-      if (player.getGameMode() !== GameMode.Creative) {
-        const inv = player.getComponent(EntityComponentTypes.Inventory)?.container;
-        const slot = player.selectedSlotIndex;
-        const held = inv?.getItem(slot);
-        if (inv && held?.typeId === "minecraft:fire_charge") {
-          if (held.amount > 1) {
-            held.amount -= 1;
-            inv.setItem(slot, held);
-          } else inv.setItem(slot, undefined);
-        }
-      }
     })
   );
+
+  const boom = (id: string, at: Vector3) => {
+    const shot = shots.get(id);
+    if (!shot) return;
+    shots.delete(id);
+    safely(() => {
+      shot.dim.createExplosion(at, TNT_POWER, { breaksBlocks: true, causesFire: true, source: shot.owner.isValid ? shot.owner : undefined });
+    });
+  };
+  const hitId = (e: Entity) => {
+    try {
+      return e.id;
+    } catch {
+      return undefined;
+    }
+  };
+  world.afterEvents.projectileHitBlock.subscribe(({ projectile, location }) => {
+    const id = hitId(projectile);
+    if (id) boom(id, location);
+  });
+  world.afterEvents.projectileHitEntity.subscribe(({ projectile, location }) => {
+    const id = hitId(projectile);
+    if (id) boom(id, location);
+  });
+  // fallback: a shot that vanished without a hit event explodes where it was last seen
+  system.runInterval(() => {
+    for (const [id, shot] of shots) {
+      const e = world.getEntity(id);
+      if (e?.isValid) {
+        shot.last = e.location;
+        if (system.currentTick - shot.born > 200) {
+          shots.delete(id);
+          safely(() => e.remove());
+        }
+      } else boom(id, shot.last);
+    }
+  }, 1);
 }
