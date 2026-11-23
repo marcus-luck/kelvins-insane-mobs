@@ -1,0 +1,22 @@
+{
+  "format_version": "1.21.90",
+  "minecraft:block": {
+    "description": {
+      "identifier": "kim:poop_puddle",
+      "menu_category": { "category": "none", "is_hidden_in_commands": false }
+    },
+    "components": {
+      "minecraft:geometry": "geometry.kim.poop_puddle",
+      "minecraft:material_instances": { "*": { "texture": "kim_poop_puddle", "render_method": "alpha_test" } },
+      "minecraft:collision_box": { "origin": [-8, 0, -8], "size": [16, 1, 16] },
+      "minecraft:selection_box": { "origin": [-8, 0, -8], "size": [16, 1, 16] },
+      "minecraft:destructible_by_mining": { "seconds_to_destroy": 0.1 },
+      "minecraft:destructible_by_explosion": { "explosion_resistance": 0.1 },
+      "minecraft:light_dampening": 0,
+      "minecraft:map_color": "#4a2e17",
+      "minecraft:loot": "loot_tables/blocks/empty.json",
+      "minecraft:tick": { "interval_range": [10, 10], "looping": true },
+      "kim:puddle_support": {}
+    }
+  }
+}

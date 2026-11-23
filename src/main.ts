@@ -1,4 +1,5 @@
 import { world } from "@minecraft/server";
+import { registerPoop } from "./blocks/poop";
 import { registerCreeper } from "./mobs/creeper";
 import { registerEnderpig } from "./mobs/enderpig";
 import { registerFlappyGhast } from "./mobs/flappy_ghast";
@@ -12,6 +13,7 @@ registerSkeleton();
 registerSpider();
 registerFlappyGhast();
 registerEnderpig();
+registerPoop();
 
 world.afterEvents.worldLoad.subscribe(() => {
   console.warn("[Kelvin's Insane Mobs] loaded. Good luck.");

@@ -6,3 +6,6 @@ entity.kim:flappy_ghast.name=Flappy Ghast
 item.spawn_egg.entity.kim:flappy_ghast.name=Flappy Ghast Spawn Egg
 entity.kim:enderpig.name=Enderpig
 item.spawn_egg.entity.kim:enderpig.name=Enderpig Spawn Egg
+tile.kim:poop.name=Poop
+tile.kim:poop_puddle.name=Poop Puddle
+entity.kim:falling_poop.name=Falling Poop

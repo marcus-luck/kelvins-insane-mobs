@@ -1,0 +1,8 @@
+{
+  "resource_pack_name": "kelvins_insane_mobs",
+  "texture_name": "atlas.terrain",
+  "texture_data": {
+    "kim_poop": { "textures": "textures/blocks/poop" },
+    "kim_poop_puddle": { "textures": "textures/blocks/poop_puddle" }
+  }
+}

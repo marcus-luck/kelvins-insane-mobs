@@ -1,0 +1,12 @@
+{
+  "format_version": "1.10.0",
+  "minecraft:client_entity": {
+    "description": {
+      "identifier": "kim:falling_poop",
+      "materials": { "default": "entity_alphatest" },
+      "textures": { "default": "textures/blocks/poop" },
+      "geometry": { "default": "geometry.kim.falling_poop" },
+      "render_controllers": ["controller.render.default"]
+    }
+  }
+}

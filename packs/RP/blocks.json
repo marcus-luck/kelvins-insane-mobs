@@ -1,0 +1,5 @@
+{
+  "format_version": "1.21.40",
+  "kim:poop": { "sound": "slime", "textures": "kim_poop" },
+  "kim:poop_puddle": { "sound": "slime", "textures": "kim_poop_puddle" }
+}

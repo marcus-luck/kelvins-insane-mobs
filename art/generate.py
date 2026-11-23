@@ -200,7 +200,41 @@ def make_enderpig():
     img.save(RP / "textures" / "entity" / "enderpig.png")
 
 
+# --------------------------------------------------------------------------- Poop block + puddle
+POOP = (100, 62, 30)
+POOP_DARK = (70, 42, 20)
+POOP_LIGHT = (128, 84, 44)
+
+
+def make_poop():
+    rng = random.Random(5)
+    out_dir = RP / "textures" / "blocks"
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    block = Image.new("RGBA", (16, 16))
+    for y in range(16):
+        for x in range(16):
+            col = POOP_DARK if (y + (x // 4)) % 5 == 0 else POOP  # lumpy diagonal coils
+            block.putpixel((x, y), jitter(col, rng, 10))
+    for _ in range(10):
+        block.putpixel((rng.randint(0, 15), rng.randint(0, 15)), jitter(POOP_LIGHT, rng, 6))
+    block.save(out_dir / "poop.png")
+
+    puddle = Image.new("RGBA", (16, 16), (0, 0, 0, 0))
+    for y in range(16):
+        for x in range(16):
+            d = ((x - 7.5) ** 2 + (y - 7.5) ** 2 * 1.3) ** 0.5
+            wobble = 1.2 * ((x * 7 + y * 13) % 3 - 1)
+            if d + wobble < 7.2:
+                col = POOP_DARK if d > 5.5 else POOP
+                puddle.putpixel((x, y), jitter(col, rng, 8))
+    for _ in range(5):
+        puddle.putpixel((rng.randint(5, 10), rng.randint(5, 10)), jitter(POOP_LIGHT, rng, 6))
+    puddle.save(out_dir / "poop_puddle.png")
+
+
 if __name__ == "__main__":
+    make_poop()
     make_flappy_ghast()
     make_enderpig()
     tex = make_gazer()
