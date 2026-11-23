@@ -91,25 +91,6 @@ export function registerEnderpig(): void {
 
   system.runInterval(() => {
     forEachEntity(ID, (pig) =>
-      safely(() => {
-        const target = pig.target;
-        if (!target?.isValid || target instanceof Player) return;
-        const now = system.currentTick;
-        if (now - (lastHop.get(pig.id) ?? -60) < 60) return;
-        const dx = target.location.x - pig.location.x;
-        const dz = target.location.z - pig.location.z;
-        if (Math.hypot(dx, dz) < 5) return;
-        const spot = safeSpotNear(pig.dimension, target.location, 1.5);
-        if (!spot) return;
-        blink(pig, spot, target.location);
-        lastHop.set(pig.id, now);
-      })
-    );
-    if (lastHop.size > 200) lastHop.clear();
-  }, 20);
-
-  system.runInterval(() => {
-    forEachEntity(ID, (pig) =>
       safely(() =>
         pig.dimension.spawnParticle("minecraft:basic_portal_particle", {
           x: pig.location.x + (Math.random() - 0.5) * 0.8,
