@@ -3,11 +3,38 @@
     "entities": {
       "kim:gazer": {
         "volume": 1.0,
-        "pitch": [0.5, 0.7],
+        "pitch": [
+          0.5,
+          0.7
+        ],
         "events": {
           "ambient": "mob.guardian.land_idle",
           "hurt": "mob.guardian.land_hit",
           "death": "mob.guardian.land_death"
+        }
+      },
+      "kim:enderpig": {
+        "volume": 1.0,
+        "pitch": [
+          0.6,
+          0.8
+        ],
+        "events": {
+          "ambient": "mob.pig.say",
+          "hurt": "mob.endermen.hit",
+          "death": "mob.pig.death",
+          "step": "mob.pig.step"
+        }
+      },
+      "kim:flappy_ghast": {
+        "volume": 0.8,
+        "pitch": [
+          1.3,
+          1.5
+        ],
+        "events": {
+          "hurt": "mob.ghast.scream",
+          "death": "mob.ghast.death"
         }
       }
     }

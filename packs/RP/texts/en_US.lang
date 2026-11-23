@@ -2,3 +2,7 @@ pack.name=Kelvin's Insane Mobs
 pack.description=Vanilla mobs gone insane, plus a few new horrors.
 entity.kim:gazer.name=Gazer
 item.spawn_egg.entity.kim:gazer.name=Gazer Spawn Egg
+entity.kim:flappy_ghast.name=Flappy Ghast
+item.spawn_egg.entity.kim:flappy_ghast.name=Flappy Ghast Spawn Egg
+entity.kim:enderpig.name=Enderpig
+item.spawn_egg.entity.kim:enderpig.name=Enderpig Spawn Egg

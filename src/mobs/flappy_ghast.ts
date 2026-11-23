@@ -1,0 +1,125 @@
+import { EntityComponentTypes, GameMode, Player, system, world } from "@minecraft/server";
+import { forEachEntity, safely } from "../util";
+
+/**
+ * Flappy Ghast (custom mount, kim:flappy_ghast):
+ *  - Right-click holding a Fire Charge while riding: shoots a ghast fireball where you look
+ *    (uses up the charge in survival, free in creative).
+ *  - Sprint-boost: hold forward and fly straight and it keeps accelerating, up to MAX_BOOST x.
+ *    Turning bleeds the boost off; letting go of forward resets it.
+ */
+const ID = "kim:flappy_ghast";
+const BASE_SPEED = 0.03; // must match movement / flying_speed in the entity JSON
+const MAX_BOOST = 7;
+const BOOST_GAIN = 0.05; // per tick-step (every 2 ticks)
+const MAX_TURN_DEG = 5; // yaw change per step that still counts as "straight"
+const FIRE_COOLDOWN = 10;
+
+const boost = new Map<string, { level: number; yaw: number; tier: number }>();
+const lastShot = new Map<string, number>();
+
+function controllingPlayer(ghastId: string) {
+  const ghast = world.getEntity(ghastId);
+  const riders = ghast?.getComponent(EntityComponentTypes.Rideable)?.getRiders() ?? [];
+  const first = riders[0];
+  return first instanceof Player ? first : undefined;
+}
+
+function setSpeed(ghastId: string, mult: number) {
+  const ghast = world.getEntity(ghastId);
+  if (!ghast) return;
+  const fly = ghast.getComponent(EntityComponentTypes.FlyingSpeed);
+  if (fly) fly.value = BASE_SPEED * mult;
+  ghast.getComponent(EntityComponentTypes.Movement)?.setCurrentValue(BASE_SPEED * mult);
+}
+
+export function registerFlappyGhast(): void {
+  // ---- speed boost
+  system.runInterval(() => {
+    forEachEntity(ID, (ghast) =>
+      safely(() => {
+        const rider = controllingPlayer(ghast.id);
+        const state = boost.get(ghast.id) ?? { level: 1, yaw: 0, tier: 1 };
+        if (!rider) {
+          if (state.level !== 1) setSpeed(ghast.id, 1);
+          boost.delete(ghast.id);
+          return;
+        }
+        const mv = rider.inputInfo.getMovementVector();
+        const yaw = rider.getRotation().y;
+        const turn = Math.abs((((yaw - state.yaw) % 360) + 540) % 360 - 180);
+        const forward = mv.y > 0.7 && Math.abs(mv.x) < 0.35;
+
+        if (forward && turn <= MAX_TURN_DEG) state.level = Math.min(MAX_BOOST, state.level + BOOST_GAIN * state.level ** 0.5);
+        else if (forward) state.level = Math.max(1, state.level * 0.9);
+        else state.level = 1;
+        state.yaw = yaw;
+        setSpeed(ghast.id, state.level);
+
+        const tier = Math.floor(state.level);
+        if (tier > state.tier) {
+          ghast.dimension.playSound("random.orb", ghast.location, { pitch: 0.5 + tier * 0.2, volume: 1 });
+        }
+        state.tier = tier;
+        boost.set(ghast.id, state);
+
+        if (state.level > 1.05) {
+          const bar = "|".repeat(Math.round((state.level / MAX_BOOST) * 20)).padEnd(20, ".");
+          rider.onScreenDisplay.setActionBar(`§dBOOST §b[${bar}] §f${state.level.toFixed(1)}x`);
+        }
+        if (state.level >= 3) {
+          const v = ghast.getVelocity();
+          safely(() =>
+            ghast.dimension.spawnParticle("minecraft:basic_flame_particle", {
+              x: ghast.location.x - v.x * 3,
+              y: ghast.location.y + 1.5,
+              z: ghast.location.z - v.z * 3,
+            })
+          );
+        }
+        // flappy flap sounds, faster when faster
+        if (mv.y !== 0 || mv.x !== 0) {
+          const every = Math.max(2, Math.round(12 / state.level)) * 2;
+          if (system.currentTick % every === 0) {
+            ghast.dimension.playSound("mob.enderdragon.flap", ghast.location, { pitch: 1.6, volume: 0.6 });
+          }
+        }
+      })
+    );
+  }, 2);
+
+  // ---- fireballs
+  world.afterEvents.itemUse.subscribe(({ source: player, itemStack }) =>
+    safely(() => {
+      if (itemStack.typeId !== "minecraft:fire_charge") return;
+      const mount = player.getComponent(EntityComponentTypes.Riding)?.entityRidingOn;
+      if (mount?.typeId !== ID) return;
+      const now = system.currentTick;
+      if (now - (lastShot.get(player.id) ?? -FIRE_COOLDOWN) < FIRE_COOLDOWN) return;
+      lastShot.set(player.id, now);
+
+      const dir = player.getViewDirection();
+      const head = player.getHeadLocation();
+      const spawnAt = { x: head.x + dir.x * 3.5, y: head.y + dir.y * 3.5, z: head.z + dir.z * 3.5 };
+      const fireball = player.dimension.spawnEntity("minecraft:fireball", spawnAt);
+      const proj = fireball.getComponent(EntityComponentTypes.Projectile);
+      if (proj) {
+        proj.owner = player;
+        proj.shoot({ x: dir.x * 1.8, y: dir.y * 1.8, z: dir.z * 1.8 });
+      }
+      player.dimension.playSound("mob.ghast.fireball", head, { pitch: 1.3 });
+
+      if (player.getGameMode() !== GameMode.Creative) {
+        const inv = player.getComponent(EntityComponentTypes.Inventory)?.container;
+        const slot = player.selectedSlotIndex;
+        const held = inv?.getItem(slot);
+        if (inv && held?.typeId === "minecraft:fire_charge") {
+          if (held.amount > 1) {
+            held.amount -= 1;
+            inv.setItem(slot, held);
+          } else inv.setItem(slot, undefined);
+        }
+      }
+    })
+  );
+}

@@ -1,0 +1,24 @@
+{
+  "format_version": "1.10.0",
+  "minecraft:client_entity": {
+    "description": {
+      "identifier": "kim:flappy_ghast",
+      "materials": { "default": "entity_alphatest" },
+      "textures": { "default": "textures/entity/flappy_ghast" },
+      "geometry": { "default": "geometry.kim.flappy_ghast" },
+      "animations": {
+        "flap": "animation.kim.flappy_ghast.flap",
+        "float": "animation.kim.flappy_ghast.float"
+      },
+      "scripts": {
+        "pre_animation": [
+          "v.flap_speed = 0.8 + (query.has_rider ? 1.2 : 0.0) + math.clamp(query.vertical_speed, 0.0, 8.0) * 1.5 + math.min(query.ground_speed, 60.0) * 0.15;",
+          "v.flap = math.mod((v.flap ?? 0.0) + query.delta_time * v.flap_speed * 360.0, 360.0);"
+        ],
+        "animate": ["float", "flap"]
+      },
+      "render_controllers": ["controller.render.default"],
+      "spawn_egg": { "base_color": "#ff9ccf", "overlay_color": "#7cc8ff" }
+    }
+  }
+}

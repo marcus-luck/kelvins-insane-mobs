@@ -121,7 +121,88 @@ def make_pack_icon(gazer_tex):
         icon.save(p)
 
 
+# --------------------------------------------------------------------------- Flappy Ghast
+PINK = (255, 160, 205)
+PINK_DARK = (232, 120, 176)
+BLUE = (124, 196, 255)
+BLUE_DARK = (84, 150, 230)
+
+
+def body_face(img, ox, oy, rng, band=True):
+    """16x16 body face: pink on top fading into a blue band at the bottom."""
+    for y in range(16):
+        for x in range(16):
+            col = BLUE if (band and y >= 11) else PINK
+            if band and y == 10:
+                col = BLUE_DARK
+            img.putpixel((ox + x, oy + y), jitter(col, rng, 7))
+
+
+def make_flappy_ghast():
+    rng = random.Random(42)
+    img = Image.new("RGBA", (64, 64), (0, 0, 0, 0))
+    for ox in (0, 16, 32, 48):           # east, north(face), west, south
+        body_face(img, ox, 16, rng)
+    body_face(img, 16, 0, rng, band=False)  # top
+    fill(img, 32, 0, 16, 16, BLUE, rng, 7)  # bottom
+    # face on north (16,16): two eyes, blush, smile
+    f = (16, 16)
+    for ex in (4, 10):
+        for dy in range(3):
+            img.putpixel((f[0] + ex, f[1] + 5 + dy), (25, 20, 40, 255))
+            img.putpixel((f[0] + ex + 1, f[1] + 5 + dy), (25, 20, 40, 255))
+        img.putpixel((f[0] + ex, f[1] + 5), (255, 255, 255, 255))
+    for bx in (2, 3, 12, 13):
+        img.putpixel((f[0] + bx, f[1] + 8), jitter(PINK_DARK, rng, 4))
+    for x in range(6, 10):
+        img.putpixel((f[0] + x, f[1] + 9), (90, 30, 60, 255))
+    img.putpixel((f[0] + 5, f[1] + 8), (90, 30, 60, 255))
+    img.putpixel((f[0] + 10, f[1] + 8), (90, 30, 60, 255))
+    # wings: top (48,0) blue with pink feather tips, underside (0,0) lighter, edge strip (48,32)
+    for (ox, base) in ((48, BLUE), (0, (170, 215, 255))):
+        for y in range(16):
+            for x in range(16):
+                col = PINK if x >= 12 else base
+                if x < 12 and y % 4 == 0:
+                    col = BLUE_DARK
+                img.putpixel((ox + x, y), jitter(col, rng, 6))
+    fill(img, 48, 32, 16, 2, BLUE_DARK, rng, 5)
+    # tentacles: pink set (0,32) and blue set (24,32), each 24x24 box-uv area
+    fill(img, 0, 32, 24, 24, PINK, rng, 8)
+    fill(img, 24, 32, 24, 24, BLUE, rng, 8)
+    img.save(RP / "textures" / "entity" / "flappy_ghast.png")
+
+
+# --------------------------------------------------------------------------- Enderpig
+BLACK = (24, 22, 28)
+BLACK_2 = (36, 32, 42)
+ENDER_PURPLE = (204, 92, 255)
+
+
+def make_enderpig():
+    rng = random.Random(99)
+    img = Image.new("RGBA", (64, 64), (0, 0, 0, 0))
+    fill(img, 0, 0, 32, 16, BLACK, rng, 6)      # head 8x8x8
+    fill(img, 32, 0, 10, 4, BLACK_2, rng, 6)    # snout 4x3x1
+    fill(img, 0, 16, 52, 24, BLACK, rng, 6)     # body 10x8x16
+    fill(img, 52, 16, 8, 30, BLACK, rng, 6)     # legs 2x28x2
+    # snout front (33,1) 4x3: nostrils
+    img.putpixel((33 + 1, 2), (8, 6, 10, 255))
+    img.putpixel((33 + 2, 2), (8, 6, 10, 255))
+    # eyes on head front (8,8): enderman-style glowing purple strips
+    for x in (8 + 1, 8 + 2, 8 + 5, 8 + 6):
+        img.putpixel((x, 8 + 3), ENDER_PURPLE + (255,))
+    img.putpixel((8 + 1, 8 + 3), (240, 180, 255, 255))
+    img.putpixel((8 + 6, 8 + 3), (240, 180, 255, 255))
+    # a few purple speckles on the body
+    for _ in range(14):
+        img.putpixel((rng.randint(0, 51), rng.randint(16, 39)), jitter((90, 40, 120), rng, 10))
+    img.save(RP / "textures" / "entity" / "enderpig.png")
+
+
 if __name__ == "__main__":
+    make_flappy_ghast()
+    make_enderpig()
     tex = make_gazer()
     make_pack_icon(tex)
     print("art generated")

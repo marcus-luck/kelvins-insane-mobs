@@ -1,0 +1,18 @@
+{
+  "format_version": "1.10.0",
+  "minecraft:client_entity": {
+    "description": {
+      "identifier": "kim:enderpig",
+      "materials": { "default": "entity_alphatest" },
+      "textures": { "default": "textures/entity/enderpig" },
+      "geometry": { "default": "geometry.kim.enderpig" },
+      "animations": {
+        "walk": "animation.kim.enderpig.walk",
+        "look_at_target": "animation.common.look_at_target"
+      },
+      "scripts": { "animate": ["walk", "look_at_target"] },
+      "render_controllers": ["controller.render.default"],
+      "spawn_egg": { "base_color": "#161616", "overlay_color": "#c45cff" }
+    }
+  }
+}
