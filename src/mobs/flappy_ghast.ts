@@ -16,12 +16,14 @@ const BOOST_GAIN = 0.08; // per tick-step (every 2 ticks); ~10 s from 1x to max
 const MAX_TURN_DEG = 5; // yaw change per step that still counts as "straight"
 const FIRE_COOLDOWN = 2; // up to 10 shots per second
 const FIREBALL = "kim:tnt_fireball";
-const SHOT_SPEED = 4.5;
+const SHOT_SPEED = 4.5; // blocks per tick, flown by script in a dead-straight line
+const SHOT_LIFE = 120; // ticks (~540 blocks), then it pops in the air
+const TNT_POWER = 4;
 const CONVERTIBLE = new Set(["minecraft:snowball", "minecraft:arrow", "minecraft:egg", "minecraft:thrown_trident", "minecraft:ender_pearl"]);
 
 const boost = new Map<string, { level: number; yaw: number; tier: number }>();
 const lastShot = new Map<string, number>();
-const inFlight = new Map<string, { e: Entity; vel: Vector3 | undefined; age: number }>();
+const inFlight = new Map<string, { e: Entity; owner: Player; mountId: string | undefined; pos: Vector3; dir: Vector3; age: number }>();
 
 function controllingPlayer(ghastId: string) {
   const ghast = world.getEntity(ghastId);
@@ -110,39 +112,70 @@ export function registerFlappyGhast(): void {
       const dist = 3.5 + Math.max(0, -dir.y) * 3;
       const spawnAt = { x: head.x + dir.x * dist, y: head.y + dir.y * dist, z: head.z + dir.z * dist };
       const fireball = player.dimension.spawnEntity(FIREBALL, spawnAt);
-      const proj = fireball.getComponent(EntityComponentTypes.Projectile);
-      if (proj) {
-        proj.owner = player;
-        proj.shoot({ x: dir.x * SHOT_SPEED, y: dir.y * SHOT_SPEED, z: dir.z * SHOT_SPEED });
-      } else {
-        fireball.applyImpulse({ x: dir.x * SHOT_SPEED, y: dir.y * SHOT_SPEED, z: dir.z * SHOT_SPEED });
-      }
-      inFlight.set(fireball.id, { e: fireball, vel: undefined, age: 0 });
+      const mountId = player.getComponent(EntityComponentTypes.Riding)?.entityRidingOn?.id;
+      inFlight.set(fireball.id, { e: fireball, owner: player, mountId, pos: spawnAt, dir, age: 0 });
       player.dimension.playSound("mob.ghast.fireball", head, { pitch: 1.3 });
     } catch (e) {
       console.warn(`[Kelvin's Insane Mobs] flappy ghast shot failed: ${e}`);
     }
   };
 
-  // Keep fireballs on their launch path: other fireballs' explosions would knock them around.
-  // The velocity seen one tick after launch is the "true" one; any deviation gets reset.
+  // Fly fireballs by script: straight line, SHOT_SPEED blocks per tick, our own hit detection.
+  // (Game physics let explosions shove them around.)
+  const explode = (id: string, at: Vector3) => {
+    const shot = inFlight.get(id);
+    inFlight.delete(id);
+    if (!shot) return;
+    const dim = shot.e.dimension;
+    safely(() => shot.e.remove());
+    safely(() =>
+      dim.createExplosion(at, TNT_POWER, { breaksBlocks: true, causesFire: true, source: shot.owner.isValid ? shot.owner : undefined })
+    );
+  };
   system.runInterval(() => {
     for (const [id, shot] of inFlight) {
-      safely(() => {
-        if (!shot.e.isValid || ++shot.age > 400) return void inFlight.delete(id);
-        const v = shot.e.getVelocity();
-        if (!shot.vel) {
-          if (Math.hypot(v.x, v.y, v.z) > 0.1) shot.vel = v;
-          return;
+      if (!shot.e.isValid) {
+        inFlight.delete(id);
+        continue;
+      }
+      try {
+        const { pos, dir } = shot;
+        const dim = shot.e.dimension;
+        const along = (d: number) => ({ x: pos.x + dir.x * d, y: pos.y + dir.y * d, z: pos.z + dir.z * d });
+        let hitDist = Infinity;
+        const block = dim.getBlockFromRay(pos, dir, { maxDistance: SHOT_SPEED, includeLiquidBlocks: true, includePassableBlocks: false });
+        if (block) {
+          const b = block.block.location;
+          const f = block.faceLocation;
+          const at = { x: b.x + f.x, y: b.y + f.y, z: b.z + f.z };
+          hitDist = Math.hypot(at.x - pos.x, at.y - pos.y, at.z - pos.z);
         }
-        const t = shot.vel;
-        if (Math.hypot(v.x - t.x, v.y - t.y, v.z - t.z) > 0.05) {
-          shot.e.clearVelocity();
-          shot.e.applyImpulse(t);
+        for (const hit of dim.getEntitiesFromRay(pos, dir, { maxDistance: SHOT_SPEED })) {
+          const t = hit.entity;
+          if (t.id === shot.owner.id || t.id === shot.mountId || t.typeId === FIREBALL) continue;
+          if (hit.distance < hitDist) hitDist = hit.distance;
+          break;
         }
-      });
+        if (hitDist <= SHOT_SPEED) {
+          explode(id, along(Math.max(0, hitDist - 0.3)));
+          continue;
+        }
+        if (++shot.age > SHOT_LIFE) {
+          explode(id, pos);
+          continue;
+        }
+        shot.pos = along(SHOT_SPEED);
+        shot.e.teleport(shot.pos);
+      } catch {
+        // flew into unloaded chunks
+        inFlight.delete(id);
+        safely(() => shot.e.remove());
+      }
     }
   }, 1);
+
+  // leftovers from before a reload (not tracked any more) just vanish
+  system.runInterval(() => forEachEntity(FIREBALL, (e) => void (inFlight.has(e.id) || safely(() => e.remove()))), 100);
 
   // Right-click while holding any item (works while riding).
   world.afterEvents.itemUse.subscribe(({ source }) => fire(source));
