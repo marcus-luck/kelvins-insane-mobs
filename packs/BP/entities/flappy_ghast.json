@@ -22,7 +22,7 @@
       "minecraft:damage_sensor": {
         "triggers": [
           { "cause": "fall", "deals_damage": "no" },
-          { "cause": "fireball", "deals_damage": "no" },
+          { "cause": "projectile", "deals_damage": "no" },
           { "cause": "entity_explosion", "deals_damage": "no" },
           { "cause": "block_explosion", "deals_damage": "no" },
           { "cause": "fire", "deals_damage": "no" },
