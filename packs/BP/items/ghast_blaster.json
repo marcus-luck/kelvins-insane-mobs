@@ -1,0 +1,16 @@
+{
+  "format_version": "1.21.90",
+  "minecraft:item": {
+    "description": {
+      "identifier": "kim:ghast_blaster",
+      "menu_category": { "category": "equipment" }
+    },
+    "components": {
+      "minecraft:icon": "kim_ghast_blaster",
+      "minecraft:display_name": { "value": "item.kim:ghast_blaster.name" },
+      "minecraft:max_stack_size": 1,
+      "minecraft:hand_equipped": true,
+      "minecraft:use_modifiers": { "use_duration": 3600, "movement_modifier": 1.0 }
+    }
+  }
+}

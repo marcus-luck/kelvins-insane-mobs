@@ -233,10 +233,29 @@ def make_poop():
     puddle.save(out_dir / "poop_puddle.png")
 
 
+# --------------------------------------------------------------------------- Ghast Blaster item
+def make_blaster():
+    rng = random.Random(11)
+    img = Image.new("RGBA", (16, 16), (0, 0, 0, 0))
+    # diagonal wand from bottom-left to top-right: blue handle, pink body, glowing fire tip
+    for i in range(12):
+        x, y = 2 + i, 13 - i
+        col = BLUE_DARK if i < 4 else (PINK if i % 2 else PINK_DARK)
+        img.putpixel((x, y), jitter(col, rng, 6))
+        img.putpixel((x + 1, y), jitter(BLUE if i < 4 else PINK_DARK, rng, 6))
+    for dx, dy, col in [(0, 0, (255, 240, 120)), (1, 0, (255, 170, 40)), (-1, 0, (255, 120, 20)),
+                        (0, 1, (255, 170, 40)), (0, -1, (255, 120, 20)), (1, 1, (255, 200, 60))]:
+        img.putpixel((13 + dx, 2 + dy), col + (255,))
+    out = RP / "textures" / "items"
+    out.mkdir(parents=True, exist_ok=True)
+    img.save(out / "ghast_blaster.png")
+
+
 if __name__ == "__main__":
     make_poop()
     make_flappy_ghast()
     make_enderpig()
+    make_blaster()
     tex = make_gazer()
     make_pack_icon(tex)
     print("art generated")

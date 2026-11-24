@@ -1,0 +1,10 @@
+{
+  "format_version": "1.20.10",
+  "minecraft:recipe_shapeless": {
+    "description": { "identifier": "kim:ghast_blaster" },
+    "tags": ["crafting_table"],
+    "ingredients": [{ "item": "minecraft:blaze_rod" }, { "item": "minecraft:fire_charge" }, { "item": "minecraft:snowball" }],
+    "result": { "item": "kim:ghast_blaster" },
+    "unlock": [{ "item": "minecraft:fire_charge" }]
+  }
+}

@@ -125,6 +125,20 @@ export function registerFlappyGhast(): void {
   // Right-click while holding any item (works while riding).
   world.afterEvents.itemUse.subscribe(({ source }) => fire(source));
 
+  // Hold right-click = auto-fire. The game only reports "holding" for chargeable/usable items
+  // (Ghast Blaster, bow, crossbow, trident, food...), so those auto-fire until released.
+  const holding = new Map<string, Player>();
+  world.afterEvents.itemStartUse.subscribe(({ source }) => holding.set(source.id, source));
+  world.afterEvents.itemStopUse.subscribe(({ source }) => holding.delete(source.id));
+  world.afterEvents.itemReleaseUse.subscribe(({ source }) => holding.delete(source.id));
+  world.afterEvents.itemCompleteUse.subscribe(({ source }) => holding.delete(source.id));
+  system.runInterval(() => {
+    for (const [id, p] of holding) {
+      if (!p.isValid || !ridingFlappy(p)) holding.delete(id);
+      else fire(p);
+    }
+  }, 1);
+
   // Throwables/arrows used while riding are swallowed: itemUse already fired the fireball.
   world.afterEvents.entitySpawn.subscribe(({ entity }) =>
     safely(() => {

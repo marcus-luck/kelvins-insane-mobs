@@ -1,0 +1,7 @@
+{
+  "resource_pack_name": "kelvins_insane_mobs",
+  "texture_name": "atlas.items",
+  "texture_data": {
+    "kim_ghast_blaster": { "textures": "textures/items/ghast_blaster" }
+  }
+}
