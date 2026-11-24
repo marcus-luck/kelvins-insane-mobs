@@ -14,9 +14,9 @@ const BASE_SPEED = 0.03; // must match movement / flying_speed in the entity JSO
 const MAX_BOOST = 25;
 const BOOST_GAIN = 0.08; // per tick-step (every 2 ticks); ~10 s from 1x to max
 const MAX_TURN_DEG = 5; // yaw change per step that still counts as "straight"
-const FIRE_COOLDOWN = 20; // 1 shot per second
+const FIRE_COOLDOWN = 2; // up to 10 shots per second
 const FIREBALL = "kim:tnt_fireball";
-const SHOT_SPEED = 1.8;
+const SHOT_SPEED = 4.5;
 const CONVERTIBLE = new Set(["minecraft:snowball", "minecraft:arrow", "minecraft:egg", "minecraft:thrown_trident", "minecraft:ender_pearl"]);
 
 const boost = new Map<string, { level: number; yaw: number; tier: number }>();

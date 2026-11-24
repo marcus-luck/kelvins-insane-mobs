@@ -9,14 +9,14 @@
     "components": {
       "minecraft:type_family": { "family": ["projectile", "fireball"] },
       "minecraft:collision_box": { "width": 1.0, "height": 1.0 },
-      "minecraft:physics": {},
+      "minecraft:physics": { "has_gravity": false },
       "minecraft:fire_immune": true,
       "minecraft:projectile": {
         "anchor": "middle",
         "gravity": 0.0,
         "inertia": 1,
         "liquid_inertia": 1,
-        "power": 1.8,
+        "power": 4.5,
         "uncertainty_base": 0,
         "uncertainty_multiplier": 0,
         "reflect_on_hurt": false,
@@ -29,7 +29,7 @@
         }
       },
       "minecraft:timer": {
-        "time": 10,
+        "time": 15,
         "looping": false,
         "time_down_event": { "event": "kim:explode", "target": "self" }
       }
