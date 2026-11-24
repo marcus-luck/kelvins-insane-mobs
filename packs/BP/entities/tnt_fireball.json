@@ -1,0 +1,54 @@
+{
+  "format_version": "1.21.90",
+  "minecraft:entity": {
+    "description": {
+      "identifier": "kim:tnt_fireball",
+      "is_spawnable": false,
+      "is_summonable": true
+    },
+    "components": {
+      "minecraft:type_family": { "family": ["projectile", "fireball"] },
+      "minecraft:collision_box": { "width": 1.0, "height": 1.0 },
+      "minecraft:physics": {},
+      "minecraft:fire_immune": true,
+      "minecraft:projectile": {
+        "anchor": "middle",
+        "gravity": 0.0,
+        "inertia": 1,
+        "liquid_inertia": 1,
+        "power": 1.8,
+        "uncertainty_base": 0,
+        "uncertainty_multiplier": 0,
+        "reflect_on_hurt": false,
+        "on_hit": {
+          "impact_damage": { "damage": 6, "knockback": true },
+          "definition_event": {
+            "affect_projectile": true,
+            "event_trigger": { "event": "kim:explode", "target": "self" }
+          }
+        }
+      },
+      "minecraft:timer": {
+        "time": 10,
+        "looping": false,
+        "time_down_event": { "event": "kim:explode", "target": "self" }
+      }
+    },
+    "component_groups": {
+      "kim:exploding": {
+        "minecraft:explode": {
+          "power": 4,
+          "fuse_length": 0,
+          "fuse_lit": true,
+          "causes_fire": true,
+          "breaks_blocks": true,
+          "fire_affected_by_griefing": true,
+          "destroy_affected_by_griefing": true
+        }
+      }
+    },
+    "events": {
+      "kim:explode": { "add": { "component_groups": ["kim:exploding"] } }
+    }
+  }
+}

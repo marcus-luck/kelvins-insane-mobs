@@ -1,4 +1,4 @@
-import { Dimension, Entity, EntityComponentTypes, Player, Vector3, system, world } from "@minecraft/server";
+import { EntityComponentTypes, Player, system, world } from "@minecraft/server";
 import { forEachEntity, safely } from "../util";
 
 /**
@@ -15,13 +15,12 @@ const MAX_BOOST = 25;
 const BOOST_GAIN = 0.08; // per tick-step (every 2 ticks); ~10 s from 1x to max
 const MAX_TURN_DEG = 5; // yaw change per step that still counts as "straight"
 const FIRE_COOLDOWN = 20; // 1 shot per second
-const TNT_POWER = 4; // same as TNT
-const DEBUG = true; // temporary: logs right-click events to the content log
+const FIREBALL = "kim:tnt_fireball";
+const SHOT_SPEED = 1.8;
 const CONVERTIBLE = new Set(["minecraft:snowball", "minecraft:arrow", "minecraft:egg", "minecraft:thrown_trident", "minecraft:ender_pearl"]);
 
 const boost = new Map<string, { level: number; yaw: number; tier: number }>();
 const lastShot = new Map<string, number>();
-const shots = new Map<string, { owner: Player; dim: Dimension; last: Vector3; born: number }>();
 
 function controllingPlayer(ghastId: string) {
   const ghast = world.getEntity(ghastId);
@@ -93,11 +92,12 @@ export function registerFlappyGhast(): void {
     );
   }, 2);
 
-  // ---- TNT fireballs
+  // ---- TNT fireballs (kim:tnt_fireball explodes itself on hit, see BP/entities/tnt_fireball.json).
+  // Vanilla minecraft:fireball is not summonable, so scripts can't spawn it.
   const ridingFlappy = (player: Player) => player.getComponent(EntityComponentTypes.Riding)?.entityRidingOn?.typeId === ID;
 
-  const fire = (player: Player) =>
-    safely(() => {
+  const fire = (player: Player) => {
+    try {
       if (!ridingFlappy(player)) return;
       const now = system.currentTick;
       if (now - (lastShot.get(player.id) ?? -FIRE_COOLDOWN) < FIRE_COOLDOWN) return;
@@ -108,82 +108,39 @@ export function registerFlappyGhast(): void {
       // start further out when aiming down so the shot clears the ghast's own body
       const dist = 3.5 + Math.max(0, -dir.y) * 3;
       const spawnAt = { x: head.x + dir.x * dist, y: head.y + dir.y * dist, z: head.z + dir.z * dist };
-      const fireball = player.dimension.spawnEntity("minecraft:fireball", spawnAt);
-      shots.set(fireball.id, { owner: player, dim: player.dimension, last: spawnAt, born: now });
+      const fireball = player.dimension.spawnEntity(FIREBALL, spawnAt);
       const proj = fireball.getComponent(EntityComponentTypes.Projectile);
       if (proj) {
         proj.owner = player;
-        proj.shoot({ x: dir.x * 1.8, y: dir.y * 1.8, z: dir.z * 1.8 });
+        proj.shoot({ x: dir.x * SHOT_SPEED, y: dir.y * SHOT_SPEED, z: dir.z * SHOT_SPEED });
+      } else {
+        fireball.applyImpulse({ x: dir.x * SHOT_SPEED, y: dir.y * SHOT_SPEED, z: dir.z * SHOT_SPEED });
       }
       player.dimension.playSound("mob.ghast.fireball", head, { pitch: 1.3 });
-    });
+    } catch (e) {
+      console.warn(`[Kelvin's Insane Mobs] flappy ghast shot failed: ${e}`);
+    }
+  };
 
-  // Right-click into the air while holding an item.
-  world.afterEvents.itemUse.subscribe(({ source, itemStack }) => {
-    if (DEBUG) console.warn(`[KIM debug] itemUse ${itemStack.typeId} riding=${ridingFlappy(source)}`);
-    fire(source);
-  });
+  // Right-click while holding any item (works while riding).
+  world.afterEvents.itemUse.subscribe(({ source }) => fire(source));
 
-  // Anything the rider launches (snowball, arrow, egg, trident...) becomes a TNT fireball.
-  // This is the reliable path: projectile throws go through while riding even when plain
-  // right-clicks don't.
+  // Throwables/arrows used while riding are swallowed: itemUse already fired the fireball.
   world.afterEvents.entitySpawn.subscribe(({ entity }) =>
     safely(() => {
       if (!CONVERTIBLE.has(entity.typeId)) return;
       const owner = entity.getComponent(EntityComponentTypes.Projectile)?.owner;
-      if (!(owner instanceof Player) || !ridingFlappy(owner)) return;
-      entity.remove();
-      lastShot.delete(owner.id); // the throw itself is the rate limit
-      fire(owner);
+      if (owner instanceof Player && ridingFlappy(owner)) entity.remove();
     })
   );
 
-  // Right-click while the crosshair is on the ghast you're sitting on (most of the time when
-  // looking forward, since you sit on top of a 3-block body). Works with an empty hand too.
+  // Right-click while the crosshair is on the ghast you're sitting on (works with an empty hand).
   world.beforeEvents.playerInteractWithEntity.subscribe((ev) => {
     if (ev.target.typeId !== ID) return;
-    if (DEBUG) console.warn(`[KIM debug] interact with flappy ghast`);
     const ridingThis = ev.player.getComponent(EntityComponentTypes.Riding)?.entityRidingOn?.id === ev.target.id;
     if (!ridingThis) return; // not riding it yet: let the normal mount interaction happen
     ev.cancel = true;
     const player = ev.player;
     system.run(() => fire(player));
   });
-
-  const boom = (id: string, at: Vector3) => {
-    const shot = shots.get(id);
-    if (!shot) return;
-    shots.delete(id);
-    safely(() => {
-      shot.dim.createExplosion(at, TNT_POWER, { breaksBlocks: true, causesFire: true, source: shot.owner.isValid ? shot.owner : undefined });
-    });
-  };
-  const hitId = (e: Entity) => {
-    try {
-      return e.id;
-    } catch {
-      return undefined;
-    }
-  };
-  world.afterEvents.projectileHitBlock.subscribe(({ projectile, location }) => {
-    const id = hitId(projectile);
-    if (id) boom(id, location);
-  });
-  world.afterEvents.projectileHitEntity.subscribe(({ projectile, location }) => {
-    const id = hitId(projectile);
-    if (id) boom(id, location);
-  });
-  // fallback: a shot that vanished without a hit event explodes where it was last seen
-  system.runInterval(() => {
-    for (const [id, shot] of shots) {
-      const e = world.getEntity(id);
-      if (e?.isValid) {
-        shot.last = e.location;
-        if (system.currentTick - shot.born > 200) {
-          shots.delete(id);
-          safely(() => e.remove());
-        }
-      } else boom(id, shot.last);
-    }
-  }, 1);
 }
