@@ -16,6 +16,8 @@ const BOOST_GAIN = 0.08; // per tick-step (every 2 ticks); ~10 s from 1x to max
 const MAX_TURN_DEG = 5; // yaw change per step that still counts as "straight"
 const FIRE_COOLDOWN = 20; // 1 shot per second
 const TNT_POWER = 4; // same as TNT
+const DEBUG = true; // temporary: logs right-click events to the content log
+const CONVERTIBLE = new Set(["minecraft:snowball", "minecraft:arrow", "minecraft:egg", "minecraft:thrown_trident", "minecraft:ender_pearl"]);
 
 const boost = new Map<string, { level: number; yaw: number; tier: number }>();
 const lastShot = new Map<string, number>();
@@ -117,12 +119,30 @@ export function registerFlappyGhast(): void {
     });
 
   // Right-click into the air while holding an item.
-  world.afterEvents.itemUse.subscribe(({ source }) => fire(source));
+  world.afterEvents.itemUse.subscribe(({ source, itemStack }) => {
+    if (DEBUG) console.warn(`[KIM debug] itemUse ${itemStack.typeId} riding=${ridingFlappy(source)}`);
+    fire(source);
+  });
+
+  // Anything the rider launches (snowball, arrow, egg, trident...) becomes a TNT fireball.
+  // This is the reliable path: projectile throws go through while riding even when plain
+  // right-clicks don't.
+  world.afterEvents.entitySpawn.subscribe(({ entity }) =>
+    safely(() => {
+      if (!CONVERTIBLE.has(entity.typeId)) return;
+      const owner = entity.getComponent(EntityComponentTypes.Projectile)?.owner;
+      if (!(owner instanceof Player) || !ridingFlappy(owner)) return;
+      entity.remove();
+      lastShot.delete(owner.id); // the throw itself is the rate limit
+      fire(owner);
+    })
+  );
 
   // Right-click while the crosshair is on the ghast you're sitting on (most of the time when
   // looking forward, since you sit on top of a 3-block body). Works with an empty hand too.
   world.beforeEvents.playerInteractWithEntity.subscribe((ev) => {
     if (ev.target.typeId !== ID) return;
+    if (DEBUG) console.warn(`[KIM debug] interact with flappy ghast`);
     const ridingThis = ev.player.getComponent(EntityComponentTypes.Riding)?.entityRidingOn?.id === ev.target.id;
     if (!ridingThis) return; // not riding it yet: let the normal mount interaction happen
     ev.cancel = true;
