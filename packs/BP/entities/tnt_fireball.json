@@ -11,6 +11,8 @@
       "minecraft:collision_box": { "width": 1.0, "height": 1.0 },
       "minecraft:physics": { "has_gravity": false },
       "minecraft:fire_immune": true,
+      "minecraft:knockback_resistance": { "value": 1.0 },
+      "minecraft:damage_sensor": { "triggers": [{ "cause": "all", "deals_damage": "no" }] },
       "minecraft:projectile": {
         "anchor": "middle",
         "gravity": 0.0,

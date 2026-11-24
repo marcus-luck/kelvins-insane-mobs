@@ -1,4 +1,4 @@
-import { EntityComponentTypes, Player, system, world } from "@minecraft/server";
+import { Entity, EntityComponentTypes, Player, Vector3, system, world } from "@minecraft/server";
 import { forEachEntity, safely } from "../util";
 
 /**
@@ -21,6 +21,7 @@ const CONVERTIBLE = new Set(["minecraft:snowball", "minecraft:arrow", "minecraft
 
 const boost = new Map<string, { level: number; yaw: number; tier: number }>();
 const lastShot = new Map<string, number>();
+const inFlight = new Map<string, { e: Entity; vel: Vector3 | undefined; age: number }>();
 
 function controllingPlayer(ghastId: string) {
   const ghast = world.getEntity(ghastId);
@@ -116,11 +117,32 @@ export function registerFlappyGhast(): void {
       } else {
         fireball.applyImpulse({ x: dir.x * SHOT_SPEED, y: dir.y * SHOT_SPEED, z: dir.z * SHOT_SPEED });
       }
+      inFlight.set(fireball.id, { e: fireball, vel: undefined, age: 0 });
       player.dimension.playSound("mob.ghast.fireball", head, { pitch: 1.3 });
     } catch (e) {
       console.warn(`[Kelvin's Insane Mobs] flappy ghast shot failed: ${e}`);
     }
   };
+
+  // Keep fireballs on their launch path: other fireballs' explosions would knock them around.
+  // The velocity seen one tick after launch is the "true" one; any deviation gets reset.
+  system.runInterval(() => {
+    for (const [id, shot] of inFlight) {
+      safely(() => {
+        if (!shot.e.isValid || ++shot.age > 400) return void inFlight.delete(id);
+        const v = shot.e.getVelocity();
+        if (!shot.vel) {
+          if (Math.hypot(v.x, v.y, v.z) > 0.1) shot.vel = v;
+          return;
+        }
+        const t = shot.vel;
+        if (Math.hypot(v.x - t.x, v.y - t.y, v.z - t.z) > 0.05) {
+          shot.e.clearVelocity();
+          shot.e.applyImpulse(t);
+        }
+      });
+    }
+  }, 1);
 
   // Right-click while holding any item (works while riding).
   world.afterEvents.itemUse.subscribe(({ source }) => fire(source));
