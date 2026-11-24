@@ -3,8 +3,9 @@ import { forEachEntity, safely } from "../util";
 
 /**
  * Flappy Ghast (custom mount, kim:flappy_ghast):
- *  - Right-click (holding any item) while riding: shoots a fireball where you look that
- *    explodes like TNT and sets fire. The API can't detect empty-hand right-clicks.
+ *  - Right-click while riding: shoots a fireball where you look that explodes like TNT and
+ *    sets fire. Fires on right-clicking the ghast itself (any hand) or into the air holding an
+ *    item. The API can't see empty-hand right-clicks into the air.
  *  - Sprint-boost: hold forward and fly straight and it keeps accelerating, up to MAX_BOOST x.
  *    Turning bleeds the boost off; letting go of forward resets it.
  */
@@ -90,11 +91,12 @@ export function registerFlappyGhast(): void {
     );
   }, 2);
 
-  // ---- TNT fireballs: right-click with any item while riding
-  world.afterEvents.itemUse.subscribe(({ source: player }) =>
+  // ---- TNT fireballs
+  const ridingFlappy = (player: Player) => player.getComponent(EntityComponentTypes.Riding)?.entityRidingOn?.typeId === ID;
+
+  const fire = (player: Player) =>
     safely(() => {
-      const mount = player.getComponent(EntityComponentTypes.Riding)?.entityRidingOn;
-      if (mount?.typeId !== ID) return;
+      if (!ridingFlappy(player)) return;
       const now = system.currentTick;
       if (now - (lastShot.get(player.id) ?? -FIRE_COOLDOWN) < FIRE_COOLDOWN) return;
       lastShot.set(player.id, now);
@@ -112,8 +114,21 @@ export function registerFlappyGhast(): void {
         proj.shoot({ x: dir.x * 1.8, y: dir.y * 1.8, z: dir.z * 1.8 });
       }
       player.dimension.playSound("mob.ghast.fireball", head, { pitch: 1.3 });
-    })
-  );
+    });
+
+  // Right-click into the air while holding an item.
+  world.afterEvents.itemUse.subscribe(({ source }) => fire(source));
+
+  // Right-click while the crosshair is on the ghast you're sitting on (most of the time when
+  // looking forward, since you sit on top of a 3-block body). Works with an empty hand too.
+  world.beforeEvents.playerInteractWithEntity.subscribe((ev) => {
+    if (ev.target.typeId !== ID) return;
+    const ridingThis = ev.player.getComponent(EntityComponentTypes.Riding)?.entityRidingOn?.id === ev.target.id;
+    if (!ridingThis) return; // not riding it yet: let the normal mount interaction happen
+    ev.cancel = true;
+    const player = ev.player;
+    system.run(() => fire(player));
+  });
 
   const boom = (id: string, at: Vector3) => {
     const shot = shots.get(id);
